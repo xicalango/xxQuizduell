@@ -30,12 +30,24 @@ function CategoryCollection:addCategory( category )
   self.categories:set( category.name, category )
 end
 
-function CategoryCollection:getCategoryNames()
-  return self.categories.keys
+function CategoryCollection:getCategoryByName( category_name )
+  return self.categories[category_name]
 end
 
-function CategoryCollection:getNextCategorySelection( old_categories )
-  return self:getCategoryNames():filter( function(v) return old_categories[v] ~= true end )
+function CategoryCollection:getCategoryNames()
+  return self.categories:keys()
+end
+
+function CategoryCollection:getNextCategorySelection( old_categories, num_categories )
+  num_categories = num_categories or 3
+
+  local unused_categories = self:getCategoryNames():filter( function(v) return old_categories[v] ~= true end )
+
+  while unused_categories:len() > num_categories do
+    unused_categories:remove( math.random(1, unused_categories:len()) )
+  end
+
+  return unused_categories
 end
 
 Category = class()
@@ -52,8 +64,6 @@ end
 function Category:__tostring()
   return self.name .. ": " .. tostring(self.questions)
 end
-
-
 
 Question = class()
 
@@ -74,14 +84,29 @@ end
 
 Challenge = class()
 
-function Challenge:_init( player1, player2 )
+function Challenge:_init( categories, player1, player2 )
+  self.categories = categories
   self.players = { player1, player2 }
   self.current_player = 1
   self.rounds = List.new()
+  self.current_round = 1
 end
 
 function Challenge:getAlreadyPlayedCategories()
   return Set( self.rounds:map(function(e) return e.category end) )
+end
+
+function Challenge:selectNextRound()
+  local played_categories = self:getAlreadyPlayedCategories()
+  local next_categories = self.categories:getNextCategorySelection( played_categories )
+
+  local selected_category = selectList( next_categories, {header = "Player " .. self.current_player .. ", select the next category"} )
+
+  local round = Round( self.rounds:len() + 1, self.categories:getCategoryByName(selected_category) )
+
+  self.rounds:append( round )
+
+  return round
 end
 
 Round = class()
@@ -91,22 +116,45 @@ function Round:_init( num, category )
   self.category = category
 end
 
+function selectList(list, options)
+  options = options or {}
+  options.prompt = options.prompt or "> "
+  local selection = nil
+
+  repeat
+    if options.header then
+      print(options.header)
+    end
+
+    local i = 1
+    for v in list:iter() do
+      print(i, v)
+      i = i + 1
+    end
+
+    if options.prompt then
+      io.write(options.prompt)
+    end
+
+    selection = tonumber( io.read() )
+
+  until selection ~= nil or options.repeats
+
+  return list[selection], selection
+end
+
 local function main()
   local categories = CategoryCollection.from_questions_file( questions )
 
   local player1 = Player( "1" )
   local player2 = Player( "2" )
 
-  local chal = Challenge( player1, player2 )
-  chal.rounds:append( Round( 1, "A" ) )
+  local challenge = Challenge( categories, player1, player2 )
 
-  local played_categories = chal:getAlreadyPlayedCategories()
+  local round = challenge:selectNextRound()
 
-  print(categories:getNextCategorySelection( played_categories ))
-
-
+  print(round.num, round.category.name)
 end
-
 
 main()
 

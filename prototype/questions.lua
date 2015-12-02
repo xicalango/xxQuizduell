@@ -67,7 +67,52 @@ local questions = {
         }
       }
     }
-  }
+  },
+
+  {
+    category = "E",
+    questions = {
+      {
+        text = "e question text?",
+        answers = {
+          "correct",
+          "wrong1",
+          "wrong2",
+          "wrong3"
+        }
+      }
+    }
+  },
+
+  {
+    category = "F",
+    questions = {
+      {
+        text = "f question text?",
+        answers = {
+          "correct",
+          "wrong1",
+          "wrong2",
+          "wrong3"
+        }
+      }
+    }
+  },
+
+  {
+    category = "G",
+    questions = {
+      {
+        text = "g question text?",
+        answers = {
+          "correct",
+          "wrong1",
+          "wrong2",
+          "wrong3"
+        }
+      }
+    }
+  },
 }
 
 return questions

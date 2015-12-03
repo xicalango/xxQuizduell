@@ -2,6 +2,8 @@
 
 require 'pl'
 
+local utils = require 'utils'
+
 local questions = require "questions"
 
 CategoryCollection = class()
@@ -15,7 +17,11 @@ function CategoryCollection.from_questions_file( questions )
     for _, ques_table in ipairs(cat_table.questions) do
       category:addQuestion( ques_table.text, ques_table.answers )
     end
-
+  
+    if category.questions:len() < 3 then
+      error( "category " .. category.name .. " has too few questions. (" .. category.questions:len() .. "/3)" )
+    end
+    
     categories:addCategory( category )
   end
 
@@ -43,22 +49,24 @@ function CategoryCollection:getNextCategorySelection( old_categories, num_catego
 
   local unused_categories = self:getCategoryNames():filter( function(v) return old_categories[v] ~= true end )
 
-  while unused_categories:len() > num_categories do
-    unused_categories:remove( math.random(1, unused_categories:len()) )
-  end
-
-  return unused_categories
+  return utils.selectRandomSublist( unused_categories, num_categories )
 end
 
 Category = class()
 
 function Category:_init( name )
   self.name = name
-  self.questions = List.new()
+  self.questions = List()
 end
 
 function Category:addQuestion( text, answers )
   self.questions:append( Question( text, answers ) )
+end
+
+function Category:getRandomQuestions( num_questions )
+  num_questions = num_questions or 3
+  
+  return utils.selectRandomSublist( self.questions, num_questions )
 end
 
 function Category:__tostring()
@@ -69,11 +77,30 @@ Question = class()
 
 function Question:_init( text, answers )
   self.text = text
-  self.answers = List.new( answers )
+  self.answers = List()
+  
+  for i, answer_text in ipairs(answers) do
+    self.answers:append( Answer( answer_text, i == 1 ) )
+  end
+  
+  if self.answers:len() ~= 4 then
+    error( "not enough answers in question '" .. text .. "' (" .. self.answers:len() .. "/4)" )
+  end
 end
 
 function Question:__tostring()
   return self.text .. ": " .. tostring(self.answers)
+end
+
+Answer = class()
+
+function Answer:_init( text, correct )
+  self.text = text
+  self.correct = correct
+end
+
+function Answer:__tostring()
+  return "{" .. self.text .. " = " .. (self.correct and "correct" or "wrong") .. "}"
 end
 
 Player = class()
@@ -88,7 +115,7 @@ function Challenge:_init( categories, player1, player2 )
   self.categories = categories
   self.players = { player1, player2 }
   self.current_player = 1
-  self.rounds = List.new()
+  self.rounds = List()
   self.current_round = 1
 end
 
@@ -100,7 +127,7 @@ function Challenge:selectNextRound()
   local played_categories = self:getAlreadyPlayedCategories()
   local next_categories = self.categories:getNextCategorySelection( played_categories )
 
-  local selected_category = selectList( next_categories, {header = "Player " .. self.current_player .. ", select the next category"} )
+  local selected_category = utils.menu( next_categories, {header = "Player " .. self.current_player .. ", select the next category"} )
 
   local round = Round( self.rounds:len() + 1, self.categories:getCategoryByName(selected_category) )
 
@@ -114,33 +141,7 @@ Round = class()
 function Round:_init( num, category )
   self.num = num
   self.category = category
-end
-
-function selectList(list, options)
-  options = options or {}
-  options.prompt = options.prompt or "> "
-  local selection = nil
-
-  repeat
-    if options.header then
-      print(options.header)
-    end
-
-    local i = 1
-    for v in list:iter() do
-      print(i, v)
-      i = i + 1
-    end
-
-    if options.prompt then
-      io.write(options.prompt)
-    end
-
-    selection = tonumber( io.read() )
-
-  until selection ~= nil or options.repeats
-
-  return list[selection], selection
+  self.questions = category:getRandomQuestions()
 end
 
 local function main()
@@ -153,7 +154,7 @@ local function main()
 
   local round = challenge:selectNextRound()
 
-  print(round.num, round.category.name)
+  print(round.num, round.category.name, round.questions)
 end
 
 main()

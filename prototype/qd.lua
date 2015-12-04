@@ -89,10 +89,16 @@ function Question:_init( text, answers )
   if self.answers:len() ~= 4 then
     error( "not enough answers in question '" .. text .. "' (" .. self.answers:len() .. "/4)" )
   end
+  
+  utils.shuffle( self.answers )
 end
 
 function Question:__tostring()
   return self.text .. ": " .. tostring(self.answers)
+end
+
+function Question:inputAnswer()
+  return utils.menu( self.answers, { header = self.text } )
 end
 
 --- Answer
@@ -104,13 +110,17 @@ function Answer:_init( text, correct )
 end
 
 function Answer:__tostring()
-  return "{" .. self.text .. " = " .. (self.correct and "correct" or "wrong") .. "}"
+  return self.text
 end
 
 Player = class()
 
 function Player:_init( name )
   self.name = name
+end
+
+function Player:__tostring()
+  return self.name
 end
 
 --- Challenge
@@ -144,6 +154,27 @@ function Challenge:selectNextRound()
   return round
 end
 
+function Challenge:playNextRound()
+  if not self:isRunning() then
+    error( "Game is over" )
+  end
+  
+  local round = self.rounds[ self.rounds:len() ]
+  
+  print("It's " .. tostring(self.players[ self.current_player ]) .. " turn")
+  
+  for question in round.questions:iter() do
+    
+    local answer = question:inputAnswer()
+    
+    print(answer.correct and "correct" or "wrong")
+    
+  end
+  
+  self.current_player = 3 - self.current_player
+  
+end
+
 --- Round
 Round = class()
 
@@ -152,7 +183,6 @@ function Round:_init( num, category )
   self.category = category
   self.questions = category:getRandomQuestions()
 end
-
 
 --- Main
 local function main()
@@ -164,6 +194,8 @@ local function main()
   local challenge = Challenge( categories, player1, player2 )
 
   local round = challenge:selectNextRound()
+  
+  challenge:playNextRound()
 
   print(round.num, round.category.name, round.questions)
 end

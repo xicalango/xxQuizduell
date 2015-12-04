@@ -6,6 +6,7 @@ local utils = require 'utils'
 
 local questions = require "questions"
 
+--- Category collection
 CategoryCollection = class()
 
 function CategoryCollection.from_questions_file( questions )
@@ -52,6 +53,7 @@ function CategoryCollection:getNextCategorySelection( old_categories, num_catego
   return utils.selectRandomSublist( unused_categories, num_categories )
 end
 
+--- Category
 Category = class()
 
 function Category:_init( name )
@@ -73,6 +75,7 @@ function Category:__tostring()
   return self.name .. ": " .. tostring(self.questions)
 end
 
+--- Question
 Question = class()
 
 function Question:_init( text, answers )
@@ -92,6 +95,7 @@ function Question:__tostring()
   return self.text .. ": " .. tostring(self.answers)
 end
 
+--- Answer
 Answer = class()
 
 function Answer:_init( text, correct )
@@ -109,6 +113,7 @@ function Player:_init( name )
   self.name = name
 end
 
+--- Challenge
 Challenge = class()
 
 function Challenge:_init( categories, player1, player2 )
@@ -116,11 +121,14 @@ function Challenge:_init( categories, player1, player2 )
   self.players = { player1, player2 }
   self.current_player = 1
   self.rounds = List()
-  self.current_round = 1
 end
 
 function Challenge:getAlreadyPlayedCategories()
   return Set( self.rounds:map(function(e) return e.category end) )
+end
+
+function Challenge:isRunning()
+  return self.rounds:len() < 6
 end
 
 function Challenge:selectNextRound()
@@ -136,6 +144,7 @@ function Challenge:selectNextRound()
   return round
 end
 
+--- Round
 Round = class()
 
 function Round:_init( num, category )
@@ -144,6 +153,8 @@ function Round:_init( num, category )
   self.questions = category:getRandomQuestions()
 end
 
+
+--- Main
 local function main()
   local categories = CategoryCollection.from_questions_file( questions )
 

@@ -1,4 +1,26 @@
 
+local questions = {}
+
+for i = 1, 20 do
+  local category = {}
+  
+  category.category = "Category " .. tostring(i)
+  category.questions = {}
+  
+  for j = 1, 4 do
+    local question = {}
+    question.text = category.category .. " question " .. tostring(j)
+    question.answers = { "correct", "wrong1", "wrong2", "wrong3" }
+    table.insert( category.questions, question )
+  end
+  
+  table.insert( questions, category )
+end
+
+
+return questions
+
+--[[
 local questions = {
   {
     category = "A",
@@ -315,3 +337,4 @@ local questions = {
 
 return questions
 
+--]]

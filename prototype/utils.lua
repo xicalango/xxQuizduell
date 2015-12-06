@@ -57,8 +57,7 @@ function utils.menu(list, options)
     end
 
     selection = tonumber( io.read() )
-
-  until selection ~= nil or options.repeats
+  until (selection ~= nil and selection > 0 and selection <= list:len()) or options.repeats
 
   return list[selection], selection
 end

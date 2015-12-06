@@ -131,17 +131,23 @@ function Challenge:_init( categories, player1, player2 )
   self.players = { player1, player2 }
   self.current_player = 1
   self.rounds = List()
+  self.currentRound = 1
+  self.numRounds = 6
 end
 
 function Challenge:getAlreadyPlayedCategories()
-  return Set( self.rounds:map(function(e) return e.category end) )
+  return Set( self.rounds:map(function(e) return e.category.name end) )
 end
 
 function Challenge:isRunning()
-  return self.rounds:len() < 6
+  return self.currentRound <= self.numRounds
 end
 
 function Challenge:selectNextRound()
+  if not self:isRunning() then
+    error("Game is over")
+  end
+  
   local played_categories = self:getAlreadyPlayedCategories()
   local next_categories = self.categories:getNextCategorySelection( played_categories )
 
@@ -154,25 +160,63 @@ function Challenge:selectNextRound()
   return round
 end
 
-function Challenge:playNextRound()
+function Challenge:getCurrentRound()
+  return self.rounds[ self.currentRound ]
+end
+
+function Challenge:playRound()
   if not self:isRunning() then
     error( "Game is over" )
   end
   
-  local round = self.rounds[ self.rounds:len() ]
+  local round = self:getCurrentRound()
+  
+  if round.playerAnswers[ self.current_player ]:len() ~= 0 then
+    error("Round already played")
+  end
   
   print("It's " .. tostring(self.players[ self.current_player ]) .. " turn")
   
   for question in round.questions:iter() do
-    
     local answer = question:inputAnswer()
     
-    print(answer.correct and "correct" or "wrong")
-    
+    round.playerAnswers[ self.current_player ]:append(answer.correct)
   end
   
+end
+
+function Challenge:switchPlayers()
   self.current_player = 3 - self.current_player
+end
+
+function Challenge:prepareNextRound()
+  self.currentRound = self.currentRound + 1
+end
+
+function Challenge:play()
+  while self:isRunning() do
+    print("Start round " .. tostring(self.currentRound))
+    self:selectNextRound()
+    self:playRound()
+    self:switchPlayers()
+    self:playRound()
+    print("Score of player " .. tostring(self.current_player) .. ": " .. self:getPlayerScore( self.current_player ))
+    self:prepareNextRound()
+  end
   
+  for round in self.rounds:iter() do
+    print(tostring(round))
+  end
+  
+  for i,v in ipairs(self.players) do
+    print("Player " .. v.name .. " score: " .. self:getPlayerScore( i ))
+  end
+end
+
+function Challenge:getPlayerScore( player_number )
+  return self.rounds
+    :map( function(round) return round:sumCorrectAnswers( player_number ) end )
+    :reduce('+')
 end
 
 --- Round
@@ -182,6 +226,15 @@ function Round:_init( num, category )
   self.num = num
   self.category = category
   self.questions = category:getRandomQuestions()
+  self.playerAnswers = List{ List(), List() }
+end
+
+function Round:sumCorrectAnswers( player_number )
+  return self.playerAnswers[player_number]:count( true )
+end
+
+function Round:__tostring()
+  return "{round " .. tostring(self.num) .. " category '" .. self.category.name .. "' answers " .. tostring(self.playerAnswers) .. "}"
 end
 
 --- Main
@@ -193,11 +246,7 @@ local function main()
 
   local challenge = Challenge( categories, player1, player2 )
 
-  local round = challenge:selectNextRound()
-  
-  challenge:playNextRound()
-
-  print(round.num, round.category.name, round.questions)
+  challenge:play()
 end
 
 main()
